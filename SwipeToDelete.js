@@ -93,13 +93,18 @@ const DATA = [
   },
 ];
 
-const rowAnimatedValues = Array(21).fill({
-  rowHeight: new Animated.Value(80),
-  deleteButtonWidth: new Animated.Value(90),
-});
+const rowAnimatedValues = {};
+Array(21)
+  .fill(" ")
+  .forEach((_, i) => {
+    rowAnimatedValues[`${i}`] = {
+      rowHeight: new Animated.Value(80),
+      deleteButtonWidth: new Animated.Value(100),
+      rowBackWidth: new Animated.Value(0),
+    };
+  });
 
-function VisibleItem({ data }) {
-  const rowKey = data.key;
+function VisibleItem({ data, rowKey }) {
   return (
     <Animated.View
       style={[styles.rowFront, { height: rowAnimatedValues[rowKey].rowHeight }]}
@@ -115,18 +120,32 @@ function HiddenItemWithActions({
   swipeAnimatedValue,
   rowKey,
 }) {
+
+  if (rightActionActivated) {
+    Animated.timing(rowAnimatedValues[rowKey].deleteButtonWidth, {
+      toValue: Math.abs(swipeAnimatedValue.__getValue()),
+      duration: 250,
+      useNativeDriver: false,
+    }).start();
+  } else {
+    Animated.timing(rowAnimatedValues[rowKey].deleteButtonWidth, {
+      toValue: 100,
+      duration: 250,
+      useNativeDriver: false,
+    }).start();
+  }
   return (
-    <View style={styles.rowBack}>
+    <Animated.View style={styles.rowBack}>
       <Animated.View
         style={[
           styles.arrowBtn,
           {
-            width: 90,
+            width: 100,
             transform: [
               {
                 translateX: swipeAnimatedValue.interpolate({
                   inputRange: [-200, -120, 0],
-                  outputRange: [-90, -40, 100],
+                  outputRange: [-100, -40, 100],
                   extrapolate: "clamp",
                 }),
               },
@@ -152,7 +171,7 @@ function HiddenItemWithActions({
               {
                 translateX: swipeAnimatedValue.interpolate({
                   inputRange: [-200, -120, 0],
-                  outputRange: [0, 50, 90],
+                  outputRange: [0, 50, 100],
                   extrapolate: "clamp",
                 }),
               },
@@ -169,15 +188,15 @@ function HiddenItemWithActions({
           Delete
         </Text>
       </Animated.View>
-    </View>
+    </Animated.View>
   );
 }
 
 export default function SwipeToDelete() {
   const [list, setList] = useState(DATA);
-  const renderItem = ({ item, rowMap, rowKey }) => {
+  const renderItem = ({ item, rowMap }) => {
     return (
-      <VisibleItem data={item} rowMap={rowMap} rowKey={rowKey}></VisibleItem>
+      <VisibleItem data={item} rowMap={rowMap} rowKey={item.key}></VisibleItem>
     );
   };
 
@@ -191,11 +210,24 @@ export default function SwipeToDelete() {
     );
   };
 
+  const deleteItem = (rowKey) => {
+    const newList = list.filter((item) => item.key !== rowKey);
+    setList(newList);
+  }
+
   const onRightActionStatusChange = () => {
     console.log();
   };
-  const swipeGestureEnded = () => {
-    console.log();
+
+  const swipeGestureEnded = (rowKey, data) => {
+    console.log(rowKey);
+
+    Animated.timing(rowAnimatedValues[rowKey].rowHeight, {
+      toValue: 0,
+      delay: 2000,
+      duration: 200,
+      useNativeDriver: false,
+    }).start(() => deleteItem(rowKey));
   };
 
   return (
@@ -205,7 +237,7 @@ export default function SwipeToDelete() {
       renderItem={renderItem}
       renderHiddenItem={renderHiddenItem}
       leftOpenValue={-120}
-      // disableRightSwipe
+      disableRightSwipe
       rightOpenValue={-180}
       stopRightSwipe={-201}
       rightActivationValue={-200}
@@ -242,8 +274,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "flex-end",
     height: "100%",
+    width: "100%",
   },
   rowFront: {
+    height: 80,
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "gray",
